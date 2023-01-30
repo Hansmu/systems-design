@@ -1,5 +1,6 @@
-# Systems Design
+Notes based off of https://bytebytego.com/courses/system-design-interview/scale-from-zero-to-millions-of-users
 
+# Systems Design
 
 ## A single server
 The simplest example of a system is a single server. A single server handles everything. Web
