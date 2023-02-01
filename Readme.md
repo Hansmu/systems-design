@@ -2,6 +2,16 @@ Notes based off of https://bytebytego.com/courses/system-design-interview/scale-
 
 # Systems Design
 
+Short summary on how to scale our system to support millions of users:
+* Keep web tier stateless
+* Build redundancy at every tier
+* Cache data as much as you can
+* Support multiple data centers
+* Host static assets in CDN
+* Scale your data tier by sharding
+* Split tiers into individual services
+* Monitor your system and use automation tools
+
 ## A single server
 The simplest example of a system is a single server. A single server handles everything. Web
 app, database, cache, etc.
@@ -180,3 +190,111 @@ is chosen here because it's easy to scale.
 
 1. Autoscaling means adding or removing web servers automatically based on the traffic load.
 ![Server store](images/server_store.webp)
+
+## Adding data centers
+As your app grows geographically, and you want to provide a better user experience for people
+around the globe, supporting multiple data centers becomes a must.
+
+With multiple data centers a technology called geoDNS comes into play, which is a DNS service
+that allows domain names to be resolved to IP addresses based on the user's location.
+
+The load balancer in the below example refers to a global setup. It's not a single load balancer,
+but it's distributed.
+![Data centers](images/data_centers.webp)
+
+Multiple technical challenges have to be solved for multiple data centers to work:
+* Traffic redirection - use geoDNS to route to the nearest location.
+* Data synchronization - different regions could have different DBs, but when you need failover,
+then that causes an issue. A common strategy is to replicate data across multiple data centers.
+* Test and deployment - need to make sure everything works as expected in the data centers. 
+Automated deployment tools are vital to keep the services consistent throughout the data 
+centers.
+
+## Adding a message queue
+To further scale our system, we need to decouple different components, thus allowing for
+independent scaling. We can use a message queue for that.
+
+A message queue is a durable component, stored in memory, that supports asynchronous 
+communication.
+
+The basic architecture of a message queue is simple. Input services, called 
+producers/publishers, create messages, and publish them to a message queue. Other 
+services or servers, called consumers/subscribers, connect to the queue, and perform 
+actions defined by the messages.
+
+The message queue allows decoupling the consumer and the producer, as they use the queue
+to communicate and have no direct interaction with each other.
+
+An example could be considered with photos. The producer handles photos being uploaded, while
+the consumer handles photos being processed. You might want to manipulate the photos in some
+manner to increase their quality, but that takes time. It's better to have it happen async.
+Additionally, based on the load on either ends of the queue, you can scale the servers based
+on the current needs.
+![Queue photos](images/queue_photos.svg)
+
+## Logging, metrics, automation
+As your site grows, investing into metrics, and automation becomes a must.
+
+Monitoring error logs helps to identify problems in the system. Can monitor on a per server 
+basis or use a tool to send to a central service.
+
+Collecting different types of metrics help us to gain business insights and understand the 
+health of the system. Example metrics that are useful:
+* Host level metrics - CPU, memory, disk I/O etc.
+* Aggregated level metrics - the performance of the entire database tier, cache tier etc.
+* Key business metrics - daily active users, retention, revenue etc.
+
+Automation - with big and complex systems automation tools improve productivity. Continuous
+integration is a good practice, in which each code check-in is verified through automation,
+allowing teams to detect problems early. Automating your build, test, deploy process, etc.
+could improve developer productivity significantly.
+
+![Message queue, logging tools](images/mq_tools.webp)
+1. The design includes a message queue, which helps to make the system more loosely
+coupled and failure resilient.
+2. Logging, monitoring, metrics, and automation tools are included.
+
+## Database scaling
+DBs need to be scaled as your data grows.
+
+There are two types of scaling - vertical scaling and horizontal scaling.
+
+Vertical scaling refers to increasing the hardware power of an existing machine. It's simple,
+but has serious drawbacks:
+* There are hardware limits. If you have a large user base, a single server is not enough.
+* Greater risk of a single point of failure.
+* The overall cost of vertical scaling is high. Powerful servers are much more expensive.
+
+Horizontal scaling, also known as sharding, refers to adding more servers.
+
+Sharding separates large DBs into smaller, more easily managed parts called shards. Each
+shard shares the same schema, though the actual data on each shard is unique to the shard.
+
+An example of sharding could be that user data is allocated to a DB server using the user ID.
+Anything you access data, a hash function is used to find the corresponding shard.
+![Shard example](images/shard_example.svg)
+
+The most important factor to consider when implementing a sharding strategy is the choice
+of the sharding key. Sharding key (known as a partition key) consists of one or more 
+columns that determine how data is distributed. A sharding key allows you to retrieve 
+and modify data efficiently by routing database queries to the correct database. When 
+choosing a sharding key, one of the most important criteria is to choose a key that can 
+evenly distributed data.
+
+Sharding is not perfect. It introduces complexities and new challenges:
+* Resharding data - resharding data is needed when:
+  * A single shard can no longer hold more data due to rapid growth.
+  * Certain shards might experience shard exhaustion faster than others due to uneven data
+  distribution. When shard exhaustion happens, it requires updating the sharding function
+  and moving data around. Consistent hashing is a commonly used technique to solve this 
+  problem.
+* Celebrity problem - aka hotspot key problem. Excessive access to a specific shard could
+cause server overload.
+* Join and de-normalization - hard to perform joins after a db has been sharded across servers.
+A common workaround is to de-normalize the database so that queries can be performed in a single
+table.
+
+1. The DB has been sharded to support rapidly increasing data traffic.
+2. Some non-relational functionalities are moved to a NoSQL data store to reduce the
+DB load.
+![Sharded DB](images/sharded_db.webp)
