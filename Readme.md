@@ -271,7 +271,8 @@ Sharding separates large DBs into smaller, more easily managed parts called shar
 shard shares the same schema, though the actual data on each shard is unique to the shard.
 
 An example of sharding could be that user data is allocated to a DB server using the user ID.
-Anything you access data, a hash function is used to find the corresponding shard.
+Any time you access data, a hash function is used to find the corresponding shard.
+
 ![Shard example](images/shard_example.svg)
 
 The most important factor to consider when implementing a sharding strategy is the choice
